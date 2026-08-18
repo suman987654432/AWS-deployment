@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_URL = "http://16.16.91.9:5000/api/todos";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://16.16.91.9:5000"
+).replace(/\/$/, "");
+const API_URL = `${API_BASE_URL}/api/todos`;
 
 function App() {
   const [todos, setTodos] = useState([]);
