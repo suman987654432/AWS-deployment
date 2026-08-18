@@ -13,13 +13,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check deploy secrets
+        id: deploy-secrets
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ] && [ -n "$EC2_HOST" ] && [ -n "$EC2_USER" ] && [ -n "$EC2_SSH_KEY" ] && [ -n "$MONGO_URI" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deploy because one or more required secrets are not configured."
+          fi
+
       - name: Log in to Docker Hub
+        if: steps.deploy-secrets.outputs.ready == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Docker image
+        if: steps.deploy-secrets.outputs.ready == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend
@@ -28,6 +47,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/todo-backend:latest
 
       - name: Deploy to EC2
+        if: steps.deploy-secrets.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.EC2_HOST }}
